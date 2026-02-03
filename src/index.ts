@@ -4,6 +4,7 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { pool } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
 import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/data.js";
@@ -60,6 +61,16 @@ app.get("/", (_req, res) => {
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
 
-app.listen(PORT, () => {
-  console.log(`FYP Forecast API running at http://localhost:${PORT}`);
-});
+async function start() {
+  try {
+    await pool.query("SELECT 1");
+    console.log("Database successfully connected.");
+  } catch (err) {
+    console.error("Database connection failed:", (err as Error).message);
+  }
+  app.listen(PORT, () => {
+    console.log(`FYP Forecast API running at http://localhost:${PORT}`);
+  });
+}
+
+start();
