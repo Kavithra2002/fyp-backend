@@ -8,6 +8,8 @@ export interface Dataset {
   rows: number;
   columns: string[];
   uploadedAt: string;
+  /** Absolute or relative path to the CSV file (for ML service to read). */
+  filePath?: string;
   isActive?: boolean;
 }
 
@@ -18,6 +20,8 @@ export interface Model {
   name: string;
   type: ModelType;
   datasetId: string;
+  /** Key used by the ML service to load from models/<modelKey>/ (e.g. "lstm", "xgboost"). */
+  modelKey?: string;
   mae?: number;
   rmse?: number;
   mape?: number;

@@ -5,11 +5,43 @@ import type { Model, TrainRequest } from "../types.js";
 
 const router = Router();
 
+/** Request body for registering a Colab-trained model (downloaded into ml-service/models/<modelKey>/). */
+export interface RegisterModelRequest {
+  name: string;
+  type: Model["type"];
+  modelKey: string;
+  datasetId?: string;
+  mae?: number;
+  rmse?: number;
+  mape?: number;
+}
+
 // GET /models
 router.get("/", (_req, res) => {
   res.json(
     Array.from(models.values()).map((m) => ({ ...m, isActive: m.id === activeModelId }))
   );
+});
+
+// POST /models/register – register a Colab-trained model (before /:id)
+router.post("/register", (req, res) => {
+  const body = req.body as RegisterModelRequest;
+  if (!body?.name || !body?.type || !body?.modelKey) {
+    return res.status(400).json({ error: "name, type, and modelKey required" });
+  }
+  const m: Model = {
+    id: uuidv4(),
+    name: body.name,
+    type: body.type,
+    datasetId: body.datasetId ?? "",
+    modelKey: body.modelKey,
+    mae: body.mae,
+    rmse: body.rmse,
+    mape: body.mape,
+    trainedAt: new Date().toISOString(),
+  };
+  models.set(m.id, m);
+  res.status(201).json(m);
 });
 
 // POST /models/train – before /:id

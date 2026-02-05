@@ -41,12 +41,14 @@ router.post("/upload", (req: Request, res, next) => {
 
     const id = uuidv4();
     const name = file.originalname || path.basename(file.filename) || "dataset.csv";
+    const filePath = path.resolve(file.path);
     const d: Dataset = {
       id,
       name,
       rows,
       columns,
       uploadedAt: new Date().toISOString(),
+      filePath,
     };
     datasets.set(id, d);
     res.status(201).json(d);
