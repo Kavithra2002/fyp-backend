@@ -4,3 +4,10 @@ dist
 .env.local
 uploads/*
 !uploads/.gitkeep
+
+# Python venv and cache (do not commit – recreate with pip install -r requirements.txt)
+ml-service/venv/
+ml-service/__pycache__/
+ml-service/**/__pycache__/
+*.pyc
+*.pyo
