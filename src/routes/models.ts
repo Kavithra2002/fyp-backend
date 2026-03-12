@@ -2,6 +2,7 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { datasets, models, setActiveModel, activeModelId } from "../store.js";
 import type { Model, TrainRequest } from "../types.js";
+import { isMlServiceConfigured } from "../services/mlService.js";
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.post("/register", (req, res) => {
 });
 
 // POST /models/train – before /:id
-router.post("/train", (req, res) => {
+router.post("/train", async (req, res) => {
   const body = req.body as TrainRequest;
   if (!body?.datasetId || !body?.type) {
     return res.status(400).json({ error: "datasetId and type required" });
@@ -54,7 +55,45 @@ router.post("/train", (req, res) => {
     return res.status(404).json({ error: "Dataset not found" });
   }
   const jobId = uuidv4();
-  // For now: mock an immediate "done" model. Later: enqueue job, ML service trains.
+
+  // If ML service is configured, treat this as "attach existing trained model"
+  // by setting modelKey = type (xgboost/lstm/ensemble) and pulling metrics from ML metadata.
+  if (isMlServiceConfigured()) {
+    try {
+      const mlBase = process.env.ML_SERVICE_URL?.trim() || "";
+      const metaRes = await fetch(`${mlBase}/models/${body.type}/metadata`, { method: "GET" });
+      if (!metaRes.ok) {
+        const err = await metaRes.json().catch(() => ({}));
+        return res.status(400).json({
+          error:
+            (err as { error?: string }).error ||
+            `ML metadata not available for modelKey=${body.type}. Ensure ml-service/models/${body.type}/metadata.json exists.`,
+        });
+      }
+      const meta = (await metaRes.json()) as any;
+      const perf = meta?.performance?.validation || meta?.metrics || {};
+
+      const m: Model = {
+        id: uuidv4(),
+        name: `${body.type}-${Date.now()}`,
+        type: body.type,
+        datasetId: body.datasetId,
+        modelKey: body.type,
+        mae: typeof perf.mae === "number" ? perf.mae : undefined,
+        rmse: typeof perf.rmse === "number" ? perf.rmse : undefined,
+        mape: typeof perf.mape === "number" ? perf.mape : undefined,
+        trainedAt: new Date().toISOString(),
+      };
+      models.set(m.id, m);
+      // Make newly attached model active by default (matches user expectation)
+      setActiveModel(m.id);
+      return res.status(201).json({ jobId, model: m });
+    } catch (e) {
+      return res.status(500).json({ error: (e as Error).message });
+    }
+  }
+
+  // Otherwise: mock an immediate "done" model (legacy behavior)
   const m: Model = {
     id: uuidv4(),
     name: `${body.type}-${Date.now()}`,
@@ -66,7 +105,7 @@ router.post("/train", (req, res) => {
     trainedAt: new Date().toISOString(),
   };
   models.set(m.id, m);
-  res.status(201).json({ jobId, model: m });
+  return res.status(201).json({ jobId, model: m });
 });
 
 // GET /models/job/:jobId – before /:id

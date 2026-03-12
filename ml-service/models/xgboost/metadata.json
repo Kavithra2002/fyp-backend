@@ -1,0 +1,47 @@
+{
+  "model": "XGBoost",
+  "performance": {
+    "train": {
+      "mae": 2.1441218852996826,
+      "rmse": 3.150970273220572,
+      "mape": 0.016300511596618206
+    },
+    "validation": {
+      "mae": 7944.4013671875,
+      "rmse": 11432.964619905022,
+      "mape": 34.743242979692454
+    }
+  },
+  "features": [
+    "year",
+    "month",
+    "day",
+    "dayofweek",
+    "quarter",
+    "weekend",
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_7",
+    "lag_14",
+    "lag_21",
+    "lag_28",
+    "rolling_mean_7",
+    "rolling_std_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "lag_1_x_lag_7",
+    "lag_7_x_lag_14"
+  ],
+  "target": "Quantity",
+  "dataset": "UCI E-Commerce Data",
+  "training_date": "2026-03-11T03:12:33.936157",
+  "model_params": {
+    "n_estimators": 500,
+    "learning_rate": 0.05,
+    "max_depth": 6,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8
+  }
+}
+
