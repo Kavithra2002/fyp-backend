@@ -5,7 +5,8 @@ const pool = mysql.createPool({
   port: Number(process.env.MYSQL_PORT) || 3306,
   user: process.env.MYSQL_USER || "root",
   password: process.env.MYSQL_PASSWORD || "",
-  database: process.env.MYSQL_DATABASE || "fyp",
+  // Match the schema name used in your DBeaver scripts (db_fyp)
+  database: process.env.MYSQL_DATABASE || "db_fyp",
   waitForConnections: true,
   connectionLimit: 10,
 });
