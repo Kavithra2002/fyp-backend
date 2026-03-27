@@ -1,0 +1,17 @@
+{
+  "modelKey": "ensemble",
+  "dataset": "UCI E-Commerce Data",
+  "timestamp": "2026-03-26T19:37:58.705092",
+  "weights": {
+    "xgboost": 0.72,
+    "lstm": 0.28
+  },
+  "performance": {
+    "validation": {
+      "mae": 7371.70849609375,
+      "rmse": 12345.243618495344,
+      "mape": 28.107811073926374
+    }
+  },
+  "notes": "Weighted blend of XGBoost and LSTM on aligned validation window"
+}

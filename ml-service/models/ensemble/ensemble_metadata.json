@@ -1,0 +1,95 @@
+{
+  "model": "Ensemble (XGBoost + LSTM)",
+  "ensemble_type": "simple_average",
+  "performance": {
+    "validation": {
+      "mae": 7574.48095703125,
+      "rmse": 12788.84951823267,
+      "mape": 24.806100845336914
+    },
+    "training": {
+      "mae": 3623.4375,
+      "rmse": 4863.626424798681,
+      "mape": 31.76289176940918
+    },
+    "individual_models": {
+      "xgboost": {
+        "validation_mae": 6882.4267578125,
+        "validation_rmse": 12426.70929892544,
+        "validation_mape": 21.985855102539062,
+        "training_mae": 1813.77099609375
+      },
+      "lstm": {
+        "validation_mae": 9136.8759765625,
+        "validation_rmse": 13888.688923004936,
+        "validation_mape": 31.45529556274414,
+        "training_mae": 5784.55126953125
+      }
+    },
+    "improvement": {
+      "vs_xgboost_percent": -10.055380515792244,
+      "vs_lstm_percent": 17.099882099078886,
+      "best_model": "XGBoost",
+      "best_mae": 6882.4267578125
+    }
+  },
+  "dataset": "UCI E-Commerce Data",
+  "target": "Quantity",
+  "configuration": {
+    "lookback": 30,
+    "xgboost_features": 43,
+    "xgboost_feature_list": [
+      "year",
+      "month",
+      "day",
+      "dayofweek",
+      "quarter",
+      "weekend",
+      "is_friday",
+      "is_monday",
+      "week_of_month",
+      "is_month_end",
+      "is_month_start",
+      "month_sin",
+      "month_cos",
+      "dayofweek_sin",
+      "dayofweek_cos",
+      "lag_1",
+      "lag_2",
+      "lag_3",
+      "lag_7",
+      "lag_14",
+      "lag_21",
+      "lag_28",
+      "lag_diff_1",
+      "lag_diff_7",
+      "lag_ratio_7_14",
+      "rolling_mean_7",
+      "rolling_std_7",
+      "rolling_mean_14",
+      "rolling_mean_30",
+      "rolling_max_7",
+      "rolling_min_7",
+      "rolling_median_7",
+      "ewma_7",
+      "ewma_14",
+      "volatility_7",
+      "high_low_range_7",
+      "lag_1_x_lag_7",
+      "lag_7_x_lag_14",
+      "lag_1_x_rolling_mean_7",
+      "dayofweek_x_lag_1",
+      "weekend_x_lag_7",
+      "dow_avg",
+      "month_avg"
+    ],
+    "lstm_lookback": 30,
+    "train_samples": 186,
+    "validation_samples": 47
+  },
+  "training_date": "2026-03-23T08:18:24.463794",
+  "file_paths": {
+    "xgboost_model": "/content/drive/MyDrive/datasets/xgboost_model_ecommerce.json",
+    "lstm_model": "/content/drive/MyDrive/datasets/lstm_model_ecommerce.keras"
+  }
+}

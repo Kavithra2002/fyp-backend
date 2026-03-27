@@ -1,0 +1,12 @@
+{
+  "modelKey": "xgboost",
+  "dataset": "UCI E-Commerce Data",
+  "timestamp": "2026-03-26T19:17:21.671465",
+  "performance": {
+    "validation": {
+      "mae": 7436.0390625,
+      "rmse": 12503.95521425121,
+      "mape": 27.785630788760695
+    }
+  }
+}

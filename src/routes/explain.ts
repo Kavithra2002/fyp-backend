@@ -1,28 +1,9 @@
 import { Router } from "express";
-import { models } from "../store.js";
+import { activeDatasetId, datasets, models } from "../store.js";
 import { isMlServiceConfigured, mlExplain } from "../services/mlService.js";
 import type { ExplainRequest, ExplainResponse } from "../types.js";
 
 const router = Router();
-
-const MOCK_EXPLAIN: ExplainResponse = {
-  shap: [
-    { feature: "price", importance: 0.32 },
-    { feature: "promotion", importance: 0.28 },
-    { feature: "seasonality", importance: 0.18 },
-    { feature: "lag_7", importance: 0.12 },
-    { feature: "lag_14", importance: 0.06 },
-  ],
-  attention: [
-    { step: 0, weight: 0.05 },
-    { step: 1, weight: 0.08 },
-    { step: 2, weight: 0.12 },
-    { step: 3, weight: 0.15 },
-    { step: 4, weight: 0.2 },
-    { step: 5, weight: 0.22 },
-    { step: 6, weight: 0.18 },
-  ],
-};
 
 // POST /explain
 router.post("/", async (req, res) => {
@@ -30,20 +11,34 @@ router.post("/", async (req, res) => {
   if (!body?.modelId) return res.status(400).json({ error: "modelId required" });
 
   const model = models.get(body.modelId);
+  if (!model) return res.status(404).json({ error: "Model not found" });
 
-  if (isMlServiceConfigured() && model?.modelKey) {
-    try {
-      const ml = await mlExplain(model.modelKey, body.runId);
-      return res.json({
-        shap: ml.shap,
-        attention: ml.attention,
-      } satisfies ExplainResponse);
-    } catch (err) {
-      console.error("ML explain error:", (err as Error).message);
-    }
+  if (!isMlServiceConfigured()) {
+    return res.status(503).json({
+      error: "Explainability service is not connected yet. Please start the ML service and try again.",
+    });
   }
 
-  res.json(MOCK_EXPLAIN);
+  if (!model.modelKey) {
+    return res.status(400).json({
+      error: "Selected model is not connected yet. Please train/register a model and try again.",
+    });
+  }
+
+  try {
+    const dataset = (model.datasetId && datasets.get(model.datasetId)) || (activeDatasetId && datasets.get(activeDatasetId)) || null;
+    const ml = await mlExplain(model.modelKey, body.runId, dataset?.filePath ?? undefined);
+    return res.json({
+      shap: ml.shap,
+      attention: ml.attention,
+    } satisfies ExplainResponse);
+  } catch (err) {
+    console.error("ML explain error:", (err as Error).message);
+    return res.status(502).json({
+      error: "Failed to generate explanation from ML service",
+      detail: (err as Error).message,
+    });
+  }
 });
 
 export default router;

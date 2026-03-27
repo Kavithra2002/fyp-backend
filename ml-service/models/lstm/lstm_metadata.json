@@ -1,0 +1,18 @@
+{
+  "modelKey": "lstm",
+  "dataset": "UCI E-Commerce Data",
+  "lookback": 30,
+  "timestamp": "2026-03-26T19:27:55.356716",
+  "performance": {
+    "validation": {
+      "mae": 9297.76953125,
+      "rmse": 13617.646198958173,
+      "mape": 36.201072692871094
+    }
+  },
+  "metrics": {
+    "mae": 9297.76953125,
+    "rmse": 13617.646198958173,
+    "mape": 36.201072692871094
+  }
+}

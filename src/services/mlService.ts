@@ -42,11 +42,15 @@ export interface MlExplainResponse {
   attention?: { step: number; weight: number }[];
 }
 
-export async function mlExplain(modelKey: string, runId?: string): Promise<MlExplainResponse> {
+export async function mlExplain(
+  modelKey: string,
+  runId?: string,
+  datasetPath?: string | null
+): Promise<MlExplainResponse> {
   const res = await fetch(`${ML_BASE}/explain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ modelKey, ...(runId && { runId }) }),
+    body: JSON.stringify({ modelKey, ...(runId && { runId }), ...(datasetPath && { datasetPath }) }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
