@@ -1,16 +1,25 @@
 import { Router } from "express";
-import { activeDatasetId, datasets, models } from "../store.js";
 import { isMlServiceConfigured, mlExplain } from "../services/mlService.js";
 import type { ExplainRequest, ExplainResponse } from "../types.js";
+import { z } from "zod";
+import { getDatasetById, getModelById } from "../services/appRepo.js";
 
 const router = Router();
+const explainSchema = z.object({
+  modelId: z.string().uuid(),
+  runId: z.string().trim().min(1).max(120).optional(),
+});
 
 // POST /explain
 router.post("/", async (req, res) => {
-  const body = req.body as ExplainRequest;
-  if (!body?.modelId) return res.status(400).json({ error: "modelId required" });
+  const userId = (req as any).user?.id as string | undefined;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const model = models.get(body.modelId);
+  const parsed = explainSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid explain payload" });
+  const body = parsed.data as ExplainRequest;
+
+  const model = await getModelById(body.modelId, userId);
   if (!model) return res.status(404).json({ error: "Model not found" });
 
   if (!isMlServiceConfigured()) {
@@ -26,7 +35,7 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const dataset = (model.datasetId && datasets.get(model.datasetId)) || (activeDatasetId && datasets.get(activeDatasetId)) || null;
+    const dataset = model.datasetId ? await getDatasetById(model.datasetId, userId) : null;
     const ml = await mlExplain(model.modelKey, body.runId, dataset?.filePath ?? undefined);
     return res.json({
       shap: ml.shap,

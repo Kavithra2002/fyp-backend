@@ -1,11 +1,29 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import { pool } from "../db.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
+import {
+  clearAuthCookie,
+  getJwtSecret,
+  setAuthCookie,
+} from "../utils/security.js";
+import {
+  createUserSchema,
+  loginSchema,
+  registerSchema,
+  updateUserSchema,
+} from "../utils/validation.js";
 
 const router = Router();
-const SECRET = process.env.JWT_SECRET || "fyp-dev-secret-change-in-production";
+const SECRET = getJwtSecret();
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 function signToken(userId: string) {
   return jwt.sign({ userId }, SECRET, { expiresIn: "7d" });
@@ -19,7 +37,7 @@ function dbStatusToFlag(status?: string | null): number {
   return (status || "").toLowerCase() === "inactive" ? 0 : 1;
 }
 
-/** Returns next user id as last numeric id + 1 (e.g. 21 if last is 20). Stored as string for VARCHAR id column. */
+/** Next id = max(existing numeric ids) + 1. Non-numeric ids (e.g. old UUIDs) are ignored. */
 async function getNextUserId(): Promise<string> {
   const [rows] = await pool.query("SELECT id FROM users");
   const list = (rows as { id: string }[]) || [];
@@ -30,20 +48,23 @@ async function getNextUserId(): Promise<string> {
   return String(next);
 }
 
-// POST /auth/register
-router.post("/register", async (req, res) => {
-  const { email, password, name } = req.body as { email?: string; password?: string; name?: string };
-  const em = (email || "").trim().toLowerCase();
-  const pw = typeof password === "string" ? password : "";
+// POST /auth/register — disabled unless ALLOW_PUBLIC_REGISTRATION=true (admin creates users via POST /auth/users)
+router.post("/register", authLimiter, async (req, res) => {
+  if (process.env.ALLOW_PUBLIC_REGISTRATION !== "true") {
+    res.status(403).json({
+      error: "Public registration is disabled. An administrator must create your account from the Users page.",
+    });
+    return;
+  }
 
-  if (!em || !pw) {
-    res.status(400).json({ error: "Email and password required" });
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid request" });
     return;
   }
-  if (pw.length < 6) {
-    res.status(400).json({ error: "Password must be at least 6 characters" });
-    return;
-  }
+  const em = parsed.data.email;
+  const pw = parsed.data.password;
+  const trimmedName = parsed.data.name ? String(parsed.data.name).trim() || null : null;
 
   try {
     const [rows] = await pool.query("SELECT id FROM users WHERE email = ?", [em]);
@@ -55,13 +76,13 @@ router.post("/register", async (req, res) => {
 
     const id = await getNextUserId();
     const passwordHash = await bcrypt.hash(pw, 10);
-    const trimmedName = name ? String(name).trim() || null : null;
     await pool.query(
       "INSERT INTO users (id, email, password_hash, password_plain, name, user_role, user_status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [id, em, passwordHash, pw, trimmedName, "user", "active"]
+      [id, em, passwordHash, pw, trimmedName, "user", dbStatusToFlag("active")]
     );
 
     const token = signToken(id);
+    setAuthCookie(res, token);
     res.status(201).json({
       user: { id, email: em, name: trimmedName, role: "user", status: "active" },
       token,
@@ -73,15 +94,14 @@ router.post("/register", async (req, res) => {
 });
 
 // POST /auth/login
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body as { email?: string; password?: string };
-  const em = (email || "").trim().toLowerCase();
-  const pw = typeof password === "string" ? password : "";
-
-  if (!em || !pw) {
-    res.status(400).json({ error: "Email and password required" });
+router.post("/login", authLimiter, async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid request" });
     return;
   }
+  const em = parsed.data.email;
+  const pw = parsed.data.password;
 
   try {
     const [rows] = await pool.query(
@@ -109,6 +129,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = signToken(user.id);
+    setAuthCookie(res, token);
     res.json({
       user: {
         id: user.id,
@@ -123,6 +144,13 @@ router.post("/login", async (req, res) => {
     console.error("Login error:", e);
     res.status(500).json({ error: "Login failed" });
   }
+});
+
+router.post("/logout", requireAuth, async (_req, res) => {
+  // Do not clear user_state: datasets/models/selections stay tied to the account in the DB
+  // so the same user sees their workspace again after the next login.
+  clearAuthCookie(res);
+  res.json({ ok: true });
 });
 
 // GET /auth/me – requires valid JWT
@@ -200,34 +228,16 @@ router.get("/users", requireAuth, requireAdmin, async (_req, res) => {
 
 // POST /auth/users – create user (admin only)
 router.post("/users", requireAuth, requireAdmin, async (req, res) => {
-  const {
-    email,
-    password,
-    name,
-    role,
-    status,
-  } = req.body as {
-    email?: string;
-    password?: string;
-    name?: string;
-    role?: string;
-    status?: string;
-  };
-
-  const em = (email || "").trim().toLowerCase();
-  const pw = typeof password === "string" ? password : "";
-  const trimmedName = name ? String(name).trim() || null : null;
-  const normalizedRole = (role || "user").toLowerCase() === "admin" ? "admin" : "user";
-  const normalizedStatusFlag = dbStatusToFlag(status || "active");
-
-  if (!em || !pw) {
-    res.status(400).json({ error: "Email and password required" });
+  const parsed = createUserSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid request" });
     return;
   }
-  if (pw.length < 6) {
-    res.status(400).json({ error: "Password must be at least 6 characters" });
-    return;
-  }
+  const em = parsed.data.email;
+  const pw = parsed.data.password;
+  const trimmedName = parsed.data.name ? String(parsed.data.name).trim() || null : null;
+  const normalizedRole = parsed.data.role === "admin" ? "admin" : "user";
+  const normalizedStatusFlag = dbStatusToFlag(parsed.data.status || "active");
 
   try {
     const [rows] = await pool.query("SELECT id FROM users WHERE email = ?", [em]);
@@ -262,24 +272,17 @@ router.post("/users", requireAuth, requireAdmin, async (req, res) => {
 // PATCH /auth/users/:id – update user (admin only)
 router.patch("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const {
-    email,
-    password,
-    name,
-    role,
-    status,
-  } = req.body as {
-    email?: string;
-    password?: string;
-    name?: string;
-    role?: string;
-    status?: string;
-  };
-
   if (!id) {
     res.status(400).json({ error: "User id required" });
     return;
   }
+
+  const parsed = updateUserSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid request" });
+    return;
+  }
+  const { email, password, name, role, status } = parsed.data;
 
   const fields: string[] = [];
   const params: any[] = [];
@@ -308,10 +311,6 @@ router.patch("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 
   if (password) {
-    if (password.length < 6) {
-      res.status(400).json({ error: "Password must be at least 6 characters" });
-      return;
-    }
     const passwordHash = await bcrypt.hash(password, 10);
     fields.push("password_hash = ?", "password_plain = ?");
     params.push(passwordHash, password);

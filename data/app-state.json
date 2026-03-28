@@ -1,0 +1,33 @@
+{
+  "datasets": [
+    {
+      "id": "5cccdddd-3867-42a5-8021-a4a07ae558d6",
+      "name": "sample_daily_sales.csv",
+      "rows": 60,
+      "columns": [
+        "Date",
+        "Quantity"
+      ],
+      "uploadedAt": "2026-03-27T06:24:13.115Z",
+      "filePath": "E:\\FYP\\backend\\uploads\\cb262b21-7ca9-4fcf-8695-b6d950ac318c.csv",
+      "isActive": true
+    }
+  ],
+  "models": [
+    {
+      "id": "1a6f847e-220f-4e18-92c6-5f913712e2b3",
+      "name": "lstm-1774592671594",
+      "type": "lstm",
+      "datasetId": "5cccdddd-3867-42a5-8021-a4a07ae558d6",
+      "modelKey": "lstm",
+      "mae": 8870.2265625,
+      "rmse": 13248.43960623288,
+      "mape": 35.741600036621094,
+      "trainedAt": "2026-03-27T06:24:31.594Z",
+      "isActive": true
+    }
+  ],
+  "jobs": [],
+  "activeDatasetId": "5cccdddd-3867-42a5-8021-a4a07ae558d6",
+  "activeModelId": "1a6f847e-220f-4e18-92c6-5f913712e2b3"
+}

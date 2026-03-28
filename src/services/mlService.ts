@@ -4,6 +4,23 @@
  */
 
 const ML_BASE = process.env.ML_SERVICE_URL?.trim() || "";
+const ALLOWED_DATA_PREFIXES = (process.env.ML_ALLOWED_DATA_PREFIXES || "")
+  .split(",")
+  .map((v) => v.trim())
+  .filter(Boolean);
+
+function validateDatasetPath(datasetPath?: string | null): string | undefined {
+  if (!datasetPath) return undefined;
+  if (ALLOWED_DATA_PREFIXES.length === 0) return datasetPath;
+  const normalized = datasetPath.replace(/\\/g, "/").toLowerCase();
+  const allowed = ALLOWED_DATA_PREFIXES.some((p) =>
+    normalized.startsWith(p.replace(/\\/g, "/").toLowerCase())
+  );
+  if (!allowed) {
+    throw new Error("datasetPath is outside allowed ML data prefixes");
+  }
+  return datasetPath;
+}
 
 export function isMlServiceConfigured(): boolean {
   return ML_BASE.length > 0;
@@ -21,13 +38,14 @@ export async function mlForecast(
   horizon: number,
   datasetPath?: string | null
 ): Promise<MlForecastResponse> {
+  const safePath = validateDatasetPath(datasetPath);
   const res = await fetch(`${ML_BASE}/forecast`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       modelKey,
       horizon,
-      ...(datasetPath && { datasetPath }),
+      ...(safePath && { datasetPath: safePath }),
     }),
   });
   if (!res.ok) {
@@ -47,10 +65,11 @@ export async function mlExplain(
   runId?: string,
   datasetPath?: string | null
 ): Promise<MlExplainResponse> {
+  const safePath = validateDatasetPath(datasetPath);
   const res = await fetch(`${ML_BASE}/explain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ modelKey, ...(runId && { runId }), ...(datasetPath && { datasetPath }) }),
+    body: JSON.stringify({ modelKey, ...(runId && { runId }), ...(safePath && { datasetPath: safePath }) }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

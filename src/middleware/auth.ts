@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { getJwtSecret, getTokenFromRequest } from "../utils/security.js";
 
-const SECRET = process.env.JWT_SECRET || "fyp-dev-secret-change-in-production";
+const SECRET = getJwtSecret();
 
 export interface AuthUser {
   id: string;
@@ -12,8 +13,7 @@ export interface AuthUser {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const auth = req.headers.authorization;
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const token = getTokenFromRequest(req);
   if (!token) {
     res.status(401).json({ error: "Unauthorized" });
     return;

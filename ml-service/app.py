@@ -21,6 +21,7 @@ CORS(app, origins=["http://localhost:3000", "http://localhost:4000", "http://127
 # Folder where you place downloaded Colab models: models/<modelKey>/
 BASE_DIR = Path(__file__).resolve().parent
 MODELS_DIR = Path(os.environ.get("ML_MODELS_DIR", BASE_DIR / "models"))
+ALLOWED_PREFIXES = [p.strip() for p in os.environ.get("ML_ALLOWED_DATA_PREFIXES", "").split(",") if p.strip()]
 
 # In-memory cache: modelKey -> loaded model (or None if not yet loaded)
 # When you add real Keras/XGBoost loading, replace the value with the actual model.
@@ -89,6 +90,11 @@ def _read_daily_series(dataset_path: str, target_fallback: str = "value") -> pd.
     path = Path(dataset_path)
     if not path.exists():
         raise FileNotFoundError(f"datasetPath not found: {dataset_path}")
+    if ALLOWED_PREFIXES:
+        resolved = str(path.resolve()).lower().replace("\\", "/")
+        ok = any(resolved.startswith(str(Path(p).resolve()).lower().replace("\\", "/")) for p in ALLOWED_PREFIXES)
+        if not ok:
+            raise ValueError("datasetPath is outside allowed prefixes")
 
     df = pd.read_csv(path)
     cols = set(df.columns)
@@ -682,6 +688,7 @@ def explain():
 
 if __name__ == "__main__":
     port = int(os.environ.get("ML_PORT", 5000))
+    debug_enabled = os.environ.get("ML_DEBUG", "false").lower() == "true"
     print(f"ML inference service at http://localhost:{port}")
     print(f"Models directory: {MODELS_DIR}")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=debug_enabled)

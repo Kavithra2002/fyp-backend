@@ -1,0 +1,241 @@
+================================================================================
+FYP — SIMULATED EXPERT FEEDBACK EMAILS
+(Technical × 5 | Domain × 5)
+Project context assumed: Node/Express API, JWT + HttpOnly cookies, validation,
+rate limiting, CORS allowlist, PostgreSQL; Python ML microservice for forecasting
+and explainability; e-commerce / sales-oriented use case.
+================================================================================
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPERT 1 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Review notes — API design and service boundaries
+
+Dear Kavithra,
+
+Thank you for sharing your FYP backend for review. Overall, the separation between
+the Node API and the Python ML service is a sensible choice: it keeps inference
+and training concerns out of the request path for the core web layer and allows
+you to scale or swap the ML component independently.
+
+I was glad to see explicit input validation on auth and forecast-related endpoints.
+That is exactly where many student projects fail first under malformed input.
+My main suggestion is to document the contract between the two services very
+clearly—request/response schemas, error codes, and timeouts—and to add integration
+tests that exercise failure modes (ML service down, slow response, invalid model
+output shape). That will strengthen both your report and your viva when asked
+about reliability.
+
+Second, consider stating your strategy for idempotency and observability: if a
+client retries a forecast request, do you deduplicate or accept duplicates, and
+how do you log correlation IDs across Node and Python?
+
+Regards,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPERT 2 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Feedback on ML service integration and reproducibility
+
+Dear Kavithra,
+
+I reviewed the description of your ML microservice and training workflow. The
+direction—serving models from a dedicated service with a controlled debug flag and
+optional path restrictions—is aligned with basic production hygiene.
+
+For a stronger technical narrative, I recommend you spell out how model versions
+are tracked and how training data lineage is preserved (even a lightweight
+approach: dataset hash, training notebook version, and serialized model filename
+in your API metadata). Reviewers will ask how you prevent silent drift between
+what was evaluated offline and what is deployed.
+
+Also clarify evaluation metrics used during training versus what the API exposes
+to end users (point forecasts only vs. intervals, confidence, etc.). If explain
+endpoints surface feature attributions, briefly justify the method and its
+limitations for time-series or tabular data as applicable.
+
+Best,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPERT 3 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Security review — authentication and API hardening
+
+Dear Kavithra,
+
+Thank you for the walkthrough of your security baseline. Mandatory JWT secret,
+HttpOnly cookie support alongside bearer tokens, helmet, rate limiting, and CORS
+allowlisting are all appropriate controls for a student API that will be
+demonstrated and possibly deployed.
+
+A few concrete improvements to consider for your documentation and implementation:
+(1) Rotate and never commit secrets—ensure .env.example documents variables
+without real values; (2) describe your threat model briefly (who attacks what);
+(3) if file or data paths reach the ML layer, confirm path traversal and prefix
+checks are enforced consistently; (4) rate limits should be justified with
+expected legitimate traffic vs. abuse.
+
+These points will read well in a viva when examiners ask “what if someone tries
+to break this?”
+
+Kind regards,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPERT 4 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Deployment, configuration, and operational readiness
+
+Dear Kavithra,
+
+Your stack (Node API + Python service + database) is a common pattern. From an
+operations viewpoint, the critical question is how someone else can run your
+system reproducibly. Your README-style quick start is a good beginning.
+
+I suggest you add: explicit Node and Python version pins, a single command or
+script to apply SQL migrations, and health check endpoints for both services so a
+process manager or container orchestrator can detect unhealthy instances. If you
+use CI, summarize what it validates (lint, build, tests) and what it does not.
+
+For the report, a simple deployment diagram (even ASCII) showing ports, env
+vars, and data flow will help non-coders on the panel follow your architecture.
+
+Sincerely,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPERT 5 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Testing strategy and maintainability
+
+Dear Kavithra,
+
+The feature set—authentication, data routes, forecasting, and explainability—
+creates several natural seams for automated tests. Even if time was limited, I
+would expect at least unit tests for validation logic and a handful of API tests
+with a test database or containers.
+
+Please articulate in your report what is tested automatically vs. manually, and
+what your definition of “done” was for each module. Refactoring-friendly code
+usually separates pure business rules from framework glue; if your routes are
+thin and services hold logic, say so—that signals maintainability.
+
+If you add one thing before submission, prioritize tests that lock in security-
+critical behavior (e.g. unauthorized access paths) and the ML API contract.
+
+Regards,
+Senior Software Engineer
+
+================================================================================
+DOMAIN EXPERTS (E-COMMERCE / RETAIL ANALYTICS CONTEXT)
+================================================================================
+
+--------------------------------------------------------------------------------
+DOMAIN EXPERT 1 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Practical feedback — will this help day-to-day decisions?
+
+Dear Kavithra,
+
+From an operations angle, forecasting tools only matter if they connect to how
+we actually plan—stock, promotions, staffing, and supplier lead times. Your focus
+on a structured API suggests you are thinking about integration rather than a
+one-off spreadsheet, which is promising.
+
+I would push you to state clearly which business decisions your forecasts support
+(reorder quantities, safety stock, campaign planning) and what assumptions you
+make about seasonality and promotions. If those assumptions are wrong, the model
+can look accurate on paper but mislead buyers.
+
+A short “limitations for real stores” section in your report will show maturity.
+
+Best,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+DOMAIN EXPERT 2 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Data and metrics — what should stakeholders trust?
+
+Dear Kavithra,
+
+Analysts care about definitions: what is a “sale,” how returns are handled,
+whether revenue is gross or net, and what time granularity you forecast (daily,
+weekly). Without that, two teams will interpret the same chart differently.
+
+Please document your target metric and horizon, and how you handle missing or
+late data—common in real e-commerce pipelines. If your system exposes
+explanations, clarify whether they are for model debugging or for business
+storytelling; those are related but not identical.
+
+This will make your work more credible to domain reviewers.
+
+Kind regards,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+DOMAIN EXPERT 3 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Usability and trust from a non-technical user viewpoint
+
+Dear Kavithra,
+
+As someone running an online shop, I do not care about microservices—I care if
+the number helps me avoid running out of stock or over-ordering. Your technical
+architecture may be excellent, but in the viva, practice translating outputs
+into plain language: “If you see X, do Y.”
+
+I would also ask how you warn users when the model is uncertain (new products,
+Black Friday spikes, supply shocks). A forecast without an uncertainty story can
+feel overconfident.
+
+Thanks for sharing your work.
+
+Sincerely,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+DOMAIN EXPERT 4 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Methodological positioning and literature fit
+
+Dear Kavithra,
+
+Your project sits in a well-studied space: demand forecasting for retail and
+e-commerce. To strengthen the academic framing, connect your modeling choices to
+standard baselines (e.g. seasonal naive, classical statistical methods) and cite
+relevant work on forecast evaluation and explainability in operational settings.
+
+Be explicit about non-stationarity, concept drift, and cold-start items—these
+are classic failure modes. Showing awareness of them elevates the work beyond a
+pure engineering demo.
+
+Regards,
+Senior Software Engineer
+
+--------------------------------------------------------------------------------
+DOMAIN EXPERT 5 — Senior Software Engineer
+--------------------------------------------------------------------------------
+Subject: Responsible analytics in commercial forecasting
+
+Dear Kavithra,
+
+Forecasting systems can influence purchasing and pricing decisions; even when
+automated, they should be interrogated for bias and transparency. If your data
+reflects historical inequities or promotional distortions, the model can encode
+them.
+
+I encourage a brief discussion of data governance: consent, retention, who can
+access forecasts, and how wrong predictions would be detected in production.
+You do not need a legal essay—just evidence that you considered downstream impact.
+
+This complements your technical security discussion nicely.
+
+Best wishes,
+Senior Software Engineer
+
+================================================================================
+END OF FILE — Adapt any technical detail if your implementation differs.
+================================================================================

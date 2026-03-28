@@ -72,6 +72,10 @@ export interface ScenarioResult {
 export interface ScenarioResponse {
   base: ScenarioResult;
   scenario: ScenarioResult;
+  /** Forecast run id actually used as the base (may be "latest" resolved). */
+  baseRunId?: string;
+  /** Saved scenario run id (server-generated). */
+  scenarioRunId?: string;
 }
 
 export interface ExportRequest {
