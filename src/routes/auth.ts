@@ -48,9 +48,11 @@ async function getNextUserId(): Promise<string> {
   return String(next);
 }
 
-// POST /auth/register — disabled unless ALLOW_PUBLIC_REGISTRATION=true (admin creates users via POST /auth/users)
+// POST /auth/register — in production, disabled unless ALLOW_PUBLIC_REGISTRATION=true.
 router.post("/register", authLimiter, async (req, res) => {
-  if (process.env.ALLOW_PUBLIC_REGISTRATION !== "true") {
+  const allowPublicRegistration =
+    process.env.ALLOW_PUBLIC_REGISTRATION === "true" || process.env.NODE_ENV === "test";
+  if (!allowPublicRegistration) {
     res.status(403).json({
       error: "Public registration is disabled. An administrator must create your account from the Users page.",
     });

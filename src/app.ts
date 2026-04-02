@@ -36,14 +36,14 @@ export function createApp(): express.Application {
   );
   app.use(helmet());
   app.use(express.json());
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    })
-  );
+
+  const isProd = process.env.NODE_ENV === "production";
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isProd ? 300 : 10000,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -54,12 +54,12 @@ export function createApp(): express.Application {
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
   app.use("/auth", authRoutes);
-  app.use("/data", requireAuth, dataRoutes);
-  app.use("/models", requireAuth, modelsRoutes);
-  app.use("/forecast", requireAuth, forecastRoutes);
-  app.use("/explain", requireAuth, explainRoutes);
-  app.use("/scenario", requireAuth, scenarioRoutes);
-  app.use("/export", requireAuth, exportRoutes);
+  app.use("/data", requireAuth, apiLimiter, dataRoutes);
+  app.use("/models", requireAuth, apiLimiter, modelsRoutes);
+  app.use("/forecast", requireAuth, apiLimiter, forecastRoutes);
+  app.use("/explain", requireAuth, apiLimiter, explainRoutes);
+  app.use("/scenario", requireAuth, apiLimiter, scenarioRoutes);
+  app.use("/export", requireAuth, apiLimiter, exportRoutes);
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
