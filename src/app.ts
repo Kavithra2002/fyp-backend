@@ -25,10 +25,33 @@ export function createApp(): express.Application {
     .map((v) => v.trim())
     .filter(Boolean);
 
+  const isProd = process.env.NODE_ENV === "production";
+
+  function isLocalDevOrigin(origin: string): boolean {
+    try {
+      const { hostname } = new URL(origin);
+      return (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "::1" ||
+        hostname === "[::1]"
+      );
+    } catch {
+      return false;
+    }
+  }
+
   app.use(
     cors({
       origin: (origin, cb) => {
-        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        if (!isProd && isLocalDevOrigin(origin)) return cb(null, true);
+        if (!isProd && origin) {
+          console.warn(
+            `[CORS] Denied origin: ${origin}. Set CORS_ORIGINS in .env (comma-separated) or use http://localhost / 127.0.0.1. NODE_ENV=${process.env.NODE_ENV ?? "unset"}`
+          );
+        }
         return cb(new Error("CORS origin denied"));
       },
       credentials: true,
@@ -37,7 +60,6 @@ export function createApp(): express.Application {
   app.use(helmet());
   app.use(express.json());
 
-  const isProd = process.env.NODE_ENV === "production";
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: isProd ? 300 : 10000,
